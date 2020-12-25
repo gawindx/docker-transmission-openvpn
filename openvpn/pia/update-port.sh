@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 #export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin:/root/bin
 # Source our persisted env variables from container startup
 ## this is an amalgamation of two scripts to keep my PIA working, credit to the main authors, the original scripts linked in the READ.ME
@@ -24,7 +24,7 @@ user=$(sed -n 1p /config/openvpn-credentials.txt)
 pass=$(sed -n 2p /config/openvpn-credentials.txt)
 pf_host=$(ip route | grep tun | grep -v src | head -1 | awk '{ print $3 }')
 ###### Nextgen PIA port forwarding      ##################
-   
+
 get_auth_token () {
             tok=$(curl --insecure --silent --show-error --request POST --max-time $curl_max_time \
                  --header "Content-Type: application/json" \
@@ -66,8 +66,8 @@ bind_port () {
       $verify \
       "https://$pf_host:19999/bindPort")
   if [ "$(echo $pf_bind | jq -r .status)" = "OK" ]; then
-    echo "the port has been bound to $pf_port  $(date)"		
-  else  
+    echo "the port has been bound to $pf_port  $(date)"
+  else
     echo "$(date): bindPort error"
     echo $pf_bind
     echo "the has been a fatal_error"
@@ -103,13 +103,13 @@ fi
 
 # make sure transmission is running and accepting requests
 echo "waiting for transmission to become responsive"
-until torrent_list="$(transmission-remote $myauth -l)"; do sleep 10; done
+until torrent_list="$(transmission-remote $TRANSMISSION_RPC_PORT $myauth -l)"; do sleep 10; done
 echo "transmission became responsive"
 output="$(echo "$torrent_list" | tail -n 2)"
 echo "$output"
 
 # get current listening port
-transmission_peer_port=$(transmission-remote $myauth -si | grep Listenport | grep -oE '[0-9]+')
+transmission_peer_port=$(transmission-remote $TRANSMISSION_RPC_PORT $myauth -si | grep Listenport | grep -oE '[0-9]+')
 if [[ "$new_port" != "$transmission_peer_port" ]]; then
   if [[ "true" = "$ENABLE_UFW" ]]; then
     echo "Update UFW rules before changing port in Transmission"
@@ -122,11 +122,11 @@ if [[ "$new_port" != "$transmission_peer_port" ]]; then
   fi
 
   echo "setting transmission port to $new_port"
-  transmission-remote ${myauth} -p "$new_port"
+  transmission-remote ${TRANSMISSION_RPC_PORT} ${myauth} -p "$new_port"
 
   echo "Checking port..."
   sleep 10
-  transmission-remote ${myauth} -pt
+  transmission-remote ${TRANSMISSION_RPC_PORT} ${myauth} -pt
 else
     echo "No action needed, port hasn't changed"
 fi
@@ -168,6 +168,6 @@ while true; do
   fi
   sleep $pf_bindinterval &
   wait $!
-  
+
 bind_port  
 done
